@@ -18,6 +18,60 @@ public class OfflineRollingDice1 : MonoBehaviour
     public bool isAllowed = true;
     private int consecutiveSixes = 0;
     private bool forceNonSix = false;
+    private float turnTimer = 0f;
+    private const float TURN_TIME_LIMIT = 10f; // 10 seconds limit
+    private bool isTimerRunning = false;
+    private void Update()
+    {
+        // Only run timer for Red player's dice (ManageRollingDice[0])
+        if (this == OfflineManager2.om.ManageRollingDice[0] && isTimerRunning)
+        {
+            turnTimer += Time.deltaTime;
+
+            if (turnTimer >= TURN_TIME_LIMIT)
+            {
+                SkipTurnDueToTimeout();
+            }
+        }
+    }
+    public void StartTurnTimer()
+    {
+        // Only start timer for Red player's dice
+        if (this == OfflineManager2.om.ManageRollingDice[0])
+        {
+            isTimerRunning = true;
+            turnTimer = 0f;
+        }
+    }
+
+    public void ResetTurnTimer()
+    {
+        isTimerRunning = false;
+        turnTimer = 0f;
+    }
+
+    private void SkipTurnDueToTimeout()
+    {
+        Debug.Log("Red player turn skipped due to timeout");
+        ResetTurnTimer();
+
+        // Forcefully transfer the dice
+        OfflineManager2.om.transferdice = true;
+        OfflineManager2.om.canDiceRoll = true;
+        OfflineManager2.om.numberOfStepsToMove = 0;
+
+        // Immediately trigger Yellow's turn
+        if (this == OfflineManager2.om.ManageRollingDice[0]) // If this is red dice
+        {
+            // Switch to Yellow dice
+            OfflineManager2.om.ManageRollingDice[0].gameObject.SetActive(false);
+            OfflineManager2.om.ManageRollingDice[1].gameObject.SetActive(true);
+            OfflineManager2.om.dice = OfflineManager2.om.ManageRollingDice[1];
+
+            // Trigger Yellow's automatic roll after a short delay
+            OfflineManager2.om.Invoke("TriggerAIRoll", 0.5f);
+        }
+    }
     private void Awake()
     {
         pathParent = FindObjectOfType<OfflinePathObjectParent1>();
@@ -47,6 +101,7 @@ public class OfflineRollingDice1 : MonoBehaviour
             OfflineManager2.om.numberOfStepsToMove = numberGot;
             OfflineManager2.om.dice = this;
             numberSpriteHolder.gameObject.SetActive(true);
+            numberSpriteHolder.gameObject.SetActive(true);
             diceAnim.gameObject.SetActive(false);
             yield return new WaitForEndOfFrame();
             int nummberGot = OfflineManager2.om.numberOfStepsToMove;
@@ -54,6 +109,8 @@ public class OfflineRollingDice1 : MonoBehaviour
             if (OfflineManager2.om.dice == OfflineManager2.om.ManageRollingDice[0])
             {
                 outPieces = OfflineManager2.om.redOutPlayers;
+                ResetTurnTimer();
+
             }
             //else if (OfflineManager2.om.dice == OfflineManager2.om.ManageRollingDice[1])
             //{

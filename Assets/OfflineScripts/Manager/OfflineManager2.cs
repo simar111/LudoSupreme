@@ -238,24 +238,31 @@ public class OfflineManager2 : MonoBehaviour
             Debug.Log("Path Not found to be romved");
         }
     }
+    public void TriggerAIRoll()
+    {
+        if (dice == ManageRollingDice[1]) // If current dice is Yellow (AI)
+        {
+            ManageRollingDice[1].mouseRoll(); // Trigger AI roll
+        }
+    }
     public void RollingDiceManager()
     {
-       
         if (OfflineManager2.om.transferdice)
         {
             if (OfflineManager2.om.numberOfStepsToMove != 6)
             {
                 ShiftDice();
             }
-
             OfflineManager2.om.canDiceRoll = true;
         }
-        else
+        else if (OfflineManager2.om.selfDice)
         {
-            if ( OfflineManager2.om.selfDice)
+            OfflineManager2.om.selfDice = false;
+            OfflineManager2.om.canDiceRoll = true;
+
+            // Only self-roll if it's Red player
+            if (OfflineManager2.om.dice == OfflineManager2.om.ManageRollingDice[0])
             {
-                OfflineManager2.om.selfDice = false;
-                OfflineManager2.om.canDiceRoll = true;
                 OfflineManager2.om.SelfRoll();
             }
         }
@@ -278,28 +285,38 @@ public class OfflineManager2 : MonoBehaviour
             Debug.LogError("OfflineManager2.om is null.");
             return;
         }
-        // Check if ManageRollingDice is null or empty
+
         if (OfflineManager2.om.ManageRollingDice == null || OfflineManager2.om.ManageRollingDice.Length < 2)
         {
             Debug.LogError("ManageRollingDice is null or does not have enough elements.");
             return;
         }
+
+        // Reset timer for current player if it's Red
+        if (OfflineManager2.om.dice == OfflineManager2.om.ManageRollingDice[0])
+        {
+            OfflineManager2.om.ManageRollingDice[0].ResetTurnTimer();
+        }
+
         if (OfflineManager2.om.totalPlayerCanPlay == 1)
         {
-            // Logic for single player (not applicable for two players)
+            // Logic for single player
             if (OfflineManager2.om.dice == OfflineManager2.om.ManageRollingDice[0])
             {
                 OfflineManager2.om.ManageRollingDice[0].gameObject.SetActive(false);
-                OfflineManager2.om.ManageRollingDice[1].gameObject.SetActive(true); // Switch to Yellow dice
-                passout(0); // Handle passout logic for Red player
-                OfflineManager2.om.ManageRollingDice[1].mouseRoll(); // Allow Yellow player to roll
+                OfflineManager2.om.ManageRollingDice[1].gameObject.SetActive(true);
+                passout(0);
+                OfflineManager2.om.ManageRollingDice[1].mouseRoll();
             }
             else
             {
                 OfflineManager2.om.ManageRollingDice[1].gameObject.SetActive(false);
-                OfflineManager2.om.ManageRollingDice[0].gameObject.SetActive(true); // Switch back to Red dice
-                passout(1); // Handle passout logic for Yellow player
-                IncreaseRedPiecesOrderInLayer(); // Increase order for red pieces when switching to red
+                OfflineManager2.om.ManageRollingDice[0].gameObject.SetActive(true);
+                passout(1);
+                IncreaseRedPiecesOrderInLayer();
+
+                // Start timer when switching to Red player
+                OfflineManager2.om.ManageRollingDice[0].StartTurnTimer();
             }
         }
         else if (OfflineManager2.om.totalPlayerCanPlay == 2)
@@ -319,20 +336,13 @@ public class OfflineManager2 : MonoBehaviour
             }
 
             // Calculate the next dice index
-            if (currentDiceIndex == 1) // If current dice is Yellow, switch to Red
-            {
-                nextDiceIndex = 0;
-            }
-            else // If current dice is Red, switch to Yellow
-            {
-                nextDiceIndex = 1;
-            }
+            nextDiceIndex = (currentDiceIndex == 1) ? 0 : 1;
 
             // Ensure the next dice is allowed to play
             while (!OfflineManager2.om.ManageRollingDice[nextDiceIndex].isAllowed)
             {
                 nextDiceIndex++;
-                if (nextDiceIndex > 1) // Only two players (0 and 1)
+                if (nextDiceIndex > 1)
                 {
                     nextDiceIndex = 0;
                 }
@@ -342,10 +352,15 @@ public class OfflineManager2 : MonoBehaviour
             OfflineManager2.om.ManageRollingDice[currentDiceIndex].gameObject.SetActive(false);
             OfflineManager2.om.ManageRollingDice[nextDiceIndex].gameObject.SetActive(true);
 
-            // Increase order for red pieces when switching to red player's turn
+            // Start timer if next player is Red
             if (nextDiceIndex == 0)
             {
+                OfflineManager2.om.ManageRollingDice[0].StartTurnTimer();
                 IncreaseRedPiecesOrderInLayer();
+            }
+            if (nextDiceIndex == 1) // Yellow is AI
+            {
+                Invoke("TriggerAIRoll", 0.5f); // Small delay for visual feedback
             }
         }
     }
